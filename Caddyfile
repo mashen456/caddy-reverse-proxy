@@ -43,6 +43,32 @@
 	}
 }
 
+# gRPC proxy snippet (HTTP/2 required)
+(grpc_proxy) {
+	reverse_proxy {
+		dynamic a {
+			name {$BACKEND_DOMAIN}
+			port {$GRPC_PORT:50051}
+			refresh 1s
+			dial_timeout 30s
+			versions ipv4 ipv6
+		}
+		transport http {
+			versions h2c  # HTTP/2 cleartext for gRPC
+		}
+		import lb_settings
+		header_up Host {upstream_hostport}
+	}
+}
+
+# gRPC listener on separate port (if Railway exposes it)
+:{$GRPC_PORT:50051} {
+	log {
+		format json
+	}
+	import grpc_proxy
+}
+
 # site block, listens on the $PORT environment variable, automatically assigned by railway
 :{$PORT} {
 	# access logs
