@@ -50,6 +50,20 @@
 		format json # set access log format to json mode
 	}
 
+	# tRPC WebSocket - proxy to backend WS port
+	handle /ws {
+		reverse_proxy {
+			dynamic a {
+				name {$BACKEND_DOMAIN}
+				port {$WS_PORT:3001}
+				refresh 1s
+				dial_timeout 30s
+				versions ipv4 ipv6
+			}
+			header_up Host {upstream_hostport}
+		}
+	}
+
 	# Auth routes - proxy directly to backend (no prefix strip)
 	handle /auth/* {
 		import backend_proxy
