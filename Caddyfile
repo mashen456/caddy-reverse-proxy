@@ -51,6 +51,28 @@
 	}
 
 	# ============================================
+	# gRPC proxy: grpc.puppet-master.cc
+	# ============================================
+	@grpc_host host grpc.puppet-master.cc
+	handle @grpc_host {
+		reverse_proxy {
+			dynamic a {
+				name {$BACKEND_DOMAIN}
+				port {$GRPC_PORT:50051}
+				refresh 1s
+				dial_timeout 30s
+				versions ipv4 ipv6
+			}
+			import lb_settings
+			import passive_health_checks
+			header_up Host {upstream_hostport}
+			transport http {
+				versions h2c
+			}
+		}
+	}
+
+	# ============================================
 	# puppet-acc-manager: acc.puppet-master.cc
 	# ============================================
 	@acc_host host acc.puppet-master.cc
