@@ -65,7 +65,7 @@
 		reverse_proxy {
 			dynamic a {
 				name {$ACC_BACKEND_DOMAIN}
-				port {$ACC_BACKEND_PORT:3847}
+				port {$ACC_BACKEND_PORT:8080}
 				refresh 1s
 				dial_timeout 30s
 				versions ipv4 ipv6
@@ -81,7 +81,7 @@
 		reverse_proxy {
 			dynamic a {
 				name {$ACC_FRONTEND_DOMAIN}
-				port {$ACC_FRONTEND_PORT:3000}
+				port {$ACC_FRONTEND_PORT:8080}
 				refresh 1s
 				dial_timeout 30s
 				versions ipv4 ipv6
