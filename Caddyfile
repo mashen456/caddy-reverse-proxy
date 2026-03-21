@@ -1,15 +1,13 @@
 # global options
 {
-	admin off # theres no need for the admin api in railway's environment
-	persist_config off # storage isn't persistent anyway
-	auto_https off # railway handles https for us, this could in some cases cause issues if left enabled
-	# runtime logs
+	admin off
+	persist_config off
+	auto_https off
 	log {
-		format json # set runtime log format to json mode 
+		format json
 	}
-	# server options
 	servers {
-		trusted_proxies static private_ranges 100.64.0.0/10 # trust railway's proxy + CGNAT range
+		trusted_proxies static private_ranges 100.64.0.0/10
 	}
 }
 
@@ -27,44 +25,48 @@
 	unhealthy_request_count 200
 }
 
-# site block, listens on the $PORT environment variable, automatically assigned by railway
 :{$PORT} {
-	# access logs
 	log {
-		format json # set access log format to json mode
+		format json
 	}
 
-	# proxy all requests for /* to the frontend, configure these variables in the service settings
-	reverse_proxy {
-		# for private networking replicas are exposed as multiple dns results, use those dns results as the upstreams
-		dynamic a {
-			name {$FRONTEND_DOMAIN}
-			port {$FRONTEND_PORT}
-			refresh 1s
-			dial_timeout 30s
-			versions ipv4 ipv6
+	# ── guest.gaming-loft.de ──
+	@guest host guest.gaming-loft.de
+	handle @guest {
+		# /api/* → guest-backend (strip /api prefix)
+		handle_path /api/* {
+			reverse_proxy {
+				dynamic a {
+					name {$GUEST_BACKEND_DOMAIN:guest-backend.railway.internal}
+					port {$GUEST_BACKEND_PORT:4000}
+					refresh 1s
+					dial_timeout 30s
+					versions ipv4 ipv6
+				}
+				import lb_settings
+				import passive_health_checks
+				header_up Host {upstream_hostport}
+			}
 		}
-
-		# configure load balancing settings
-		import lb_settings
-
-		# configure passive health checks
-		import passive_health_checks
-
-		# sets the Host header to the header to the dynamic name and port options
-		header_up Host {upstream_hostport}
+		# everything else → guest-frontend
+		reverse_proxy {
+			dynamic a {
+				name {$GUEST_FRONTEND_DOMAIN:gaming-loft.railway.internal}
+				port {$GUEST_FRONTEND_PORT:3000}
+				refresh 1s
+				dial_timeout 30s
+				versions ipv4 ipv6
+			}
+			import lb_settings
+			import passive_health_checks
+			header_up Host {upstream_hostport}
+		}
 	}
 
-	# the handle_path directive WILL strip /api/ from the path before proxying
-	# use `handle` instead of `handle_path` if you dont want to strip the /api/ path
-	# this is needed if your backend's api routes don't start with /api/
-	# change paths as needed
+	# ── gaming-loft.de (main site, default) ──
+	# /api/* → main backend (strip /api prefix)
 	handle_path {$BACKEND_PATH:/api}/* {
-		# the /api/ prefix WILL be stripped from the uri sent to the proxy host
-		#
-		# proxy all requests for /api/* to the backend, configure this variable in the service settings
 		reverse_proxy {
-			# for private networking replicas are exposed as multiple dns results, use those dns results as the upstreams
 			dynamic a {
 				name {$BACKEND_DOMAIN}
 				port {$BACKEND_PORT}
@@ -72,15 +74,23 @@
 				dial_timeout 30s
 				versions ipv4 ipv6
 			}
-
-			# configure load balancing settings
 			import lb_settings
-
-			# configure passive health checks
 			import passive_health_checks
-
-			# sets the Host header to the header to the dynamic name and port options
 			header_up Host {upstream_hostport}
 		}
+	}
+
+	# everything else → main frontend
+	reverse_proxy {
+		dynamic a {
+			name {$FRONTEND_DOMAIN}
+			port {$FRONTEND_PORT}
+			refresh 1s
+			dial_timeout 30s
+			versions ipv4 ipv6
+		}
+		import lb_settings
+		import passive_health_checks
+		header_up Host {upstream_hostport}
 	}
 }
