@@ -67,11 +67,8 @@
 			import passive_health_checks
 			header_up Host {upstream_hostport}
 			flush_interval -1
-			buffer_requests
 			transport http {
 				versions h2c
-				read_buffer 4096
-				write_buffer 4096
 			}
 		}
 	}
